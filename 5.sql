@@ -1,0 +1,45 @@
+-- Write a SQL Query to find PersonId, Name , Number of Friends , Sum of Marks of Person who have friends with 
+-- total score greater than 100 
+USE DATABASE SQL ;
+CREATE OR REPLACE TABLE PERSON (
+    PERSON_ID INT PRIMARY KEY, 
+    NAME        VARCHAR(50),
+    EMAIL       VARCHAR(100),
+    SCORE       DOUBLE 
+);
+
+INSERT INTO PERSON VALUES 
+(1	,'Alice','alice2018@hotmail.com',	88),
+(2	,'Bob'	,'bob2018@hotmail.com'	,11),
+(3	,'Davis'	,'davis2018@hotmail.com',	27),
+(4	,'Tara',	'tara2018@hotmail.com',	45),
+(5	,'John',	'john2018@hotmail.com',	63);
+
+CREATE OR REPLACE TABLE FRIEND (
+    PERSON_ID INT REFERENCES PERSON(PERSON_ID),
+    FRIEND_ID INT 
+);
+
+INSERT INTO FRIEND VALUES 
+(1,2),
+(1,3),
+(2,3),
+(3,5),
+(4,2),
+(4,3),
+(4,5);
+
+WITH CTE AS (
+SELECT PERSON_ID , SUM(SCORE) AS FRIEND_SCORE , COUNT(FRIEND_ID) AS NUMBER_OF_FRIENDS  FROM (
+SELECT P.PERSON_ID , F.FRIEND_ID, SCORE  FROM PERSON P 
+JOIN FRIEND F 
+ON P.PERSON_ID = F.PERSON_ID
+)
+GROUP BY PERSON_ID 
+HAVING SUM(SCORE) > 100 
+)
+SELECT CTE.PERSON_ID , P.NAME  , CTE.FRIEND_SCORE , CTE.NUMBER_OF_FRIENDS
+FROM CTE 
+JOIN PERSON P 
+ON CTE.PERSON_ID = P.PERSON_ID 
+;

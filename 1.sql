@@ -1,0 +1,482 @@
+CREATE DATABASE LEETCODE;
+USE SCHEMA PUBLIC;
+
+CREATE OR REPLACE TABLE EMPLOYEE(
+    ID INT ,
+    SALARY DOUBLE
+);
+INSERT INTO EMPLOYEE VALUES
+(1,100),
+(2,200),
+(3,300);
+
+-- WRITE A SQL QUERY TO FIND THE SECOND HIGHEST SALARY FROM THE EMPLOYEE TABLE
+SELECT ID , SALARY FROM (
+SELECT ID , SALARY,
+dense_rank() OVER (ORDER BY SALARY DESC ) AS RNK
+FROM EMPLOYEE
+)
+WHERE RNK = 2
+;
+
+-- --------------------------------------------
+-- WRITE A SQL QUERY TO RANK SCORES SUCH THAT THERE SHOULD BE NO HOLES BETWEEN RANK
+CREATE OR REPLACE TABLE RANK (
+    ID INT,
+    SCORE DOUBLE
+);
+INSERT INTO RANK VALUES
+(1,3.50),
+(2,3.65),
+(3,4.00),
+(4,3.85),
+(5,4.00),
+(6,3.65);
+
+SELECT ID , SCORE ,
+DENSE_RANK() OVER(ORDER BY SCORE ASC) AS RNK
+FROM RANK;
+
+-- ----------------------------------------------------------------------
+--  WRITE AN SQL QUERY TO FIND ALL THE NUMBERS THAT APPEARS AT LEAST THREE TIMES CONSECUTIVELY
+
+CREATE TABLE CONSECUTIVE_NUMBER (
+    ID INT,
+    NUM VARCHAR
+);
+INSERT INTO CONSECUTIVE_NUMBER VALUES
+(1,1),
+(2,1),
+(3,1),
+(4,2),
+(5,1),
+(6,2),
+(7,2);
+
+SELECT distinct NUM FROM (
+SELECT ID , NUM ,
+nvl(LAG(NUM)OVER (ORDER BY id ASC) ,9999) as PREVIOUS_NUMBER,
+nvl(LEAD(NUM) OVER (ORDER BY NUM ASC),0000) AS NEXT_NUMBER
+FROM CONSECUTIVE_NUMBER
+)
+WHERE NUM =PREVIOUS_NUMBER AND NUM = NEXT_NUMBER
+;
+
+SELECT distinct a.num
+FROM CONSECUTIVE_NUMBER A
+JOIN CONSECUTIVE_NUMBER B
+ON A.ID = B.ID+1 AND A.NUM = B.NUM
+JOIN CONSECUTIVE_NUMBER C
+ON A.ID = C.ID+2 and a.num = c.num
+;
+
+-- ---------------------------------------------------------------------------- Employee Earnning more than their managers . Write an SQl query that finds out employee who earns more than their managers.
+
+CREATE TABLE EMPLOYEE2 (
+    ID INT ,
+    NAME VARCHAR,
+    SALARY DOUBLE,
+    MANAGERID INT
+);
+INSERT INTO EMPLOYEE2 values
+(1,'Joe',70000,3),
+(2,'Henry',80000,4),
+(3,'Sam',60000,NULL),
+(4,'Max',90000,NULL);
+
+SELECT A.ID
+, A.NAME AS EMPLOYEE_NAME
+,NVL(B.NAME ,'Manager') AS MANAGER_NAME
+FROM EMPLOYEE2 A
+left JOIN EMPLOYEE2 B
+ON A.MANAGERID = B.ID
+where a.salary > b.salary;
+
+-- -----------------------------------------------------
+-- Write a SQL query to find all duplicate emails in a table named Person.
+
+CREATE TABLE PERSON
+    (
+        ID INT,
+        EMAIL VARCHAR(10)
+    );
+
+INSERT INTO PERSON VALUES
+(1 , 'a@b.com'),
+(2 , 'c@d.com'),
+(3, 'a@b.com');
+
+WITH CTE AS (
+SELECT ID , EMAIL,
+row_number() OVER (PARTITION BY EMAIL ORDER BY email ASC) AS ROW_N
+FROM PERSON
+)
+SELECT DISTINCT EMAIL FROM CTE WHERE ROW_N >1;
+
+
+SELECT EMAIL
+FROM PERSON
+GROUP BY (EMAIL)
+HAVING(COUNT(ID))>1
+;
+
+-- -------------------------------------------------------
+-- Suppose that a website contains two tables, the Customers table and the orders table. Write a SQL query to find all customers who never order anything.
+
+CREATE TABLE CUSTOMERS(
+    ID INT ,
+    NAME VARCHAR(5)
+);
+CREATE TABLE ORDERS (
+    ID INT ,
+    CUSTOMER_ID INT
+);
+
+INSERT INTO CUSTOMERS VALUES
+(1 , 'Joe'),
+(2 , 'Henry'),
+(3 , 'Sam'),
+(4 , 'Max');
+
+INSERT INTO ORDERS VALUES
+(1,3),
+(2,1);
+
+WITH CTE AS
+(
+SELECT C.ID AS CUSTOMER_ID
+,C.NAME AS CUSTOMERS_NAME
+,O.ID AS ORDERS_ID
+FROM CUSTOMERS C
+LEFT JOIN ORDERS O
+ON C.ID = O.CUSTOMER_ID
+)
+SELECT distinct CUSTOMERS_NAME FROM CTE WHERE ORDERS_ID IS Null;
+
+-- ----------------------------------------------------------------------------------------------
+-- Department Highest Salary , Write an SQL query ti find employees who have the highest salary in each of the row departments.
+CREATE TABLE EMPLOYEE3 (
+    ID INT ,
+    NAME CHAR(100) ,
+    SALARY DOUBLE ,
+    DEPARTMENTID INT
+);
+
+
+CREATE TABLE DEPARTMENT (
+    ID INT ,
+    NAME CHAR(100)
+);
+
+INSERT INTO EMPLOYEE3 VALUES
+(1,'Joe',70000,1),
+(2,'Jim',90000,1),
+(3,'Henry',80000,2),
+(4,'Sam',60000,2),
+(5,'Max',90000,1);
+
+INSERT INTO DEPARTMENT VALUES
+(1,'IT'),
+(2,'Sales');
+
+WITH CTE AS (
+SELECT EMP.ID AS EMPLOYEE_ID ,
+EMP.NAME AS EMPLOYEE_NAME ,
+SALARY , D.NAME AS DEPARTMENT_NAME
+,dense_rank() OVER(PARTITION BY DEPARTMENTID ORDER BY SALARY DESC) AS SALARY_RANK
+FROM EMPLOYEE3 EMP
+JOIN DEPARTMENT D
+ON EMP.DEPARTMENTID = D.ID
+)
+SELECT EMPLOYEE_NAME
+,DEPARTMENT_NAME
+,SALARY
+FROM CTE
+WHERE 1=1
+AND SALARY_RANK = 1;
+
+-- ----------------------------------------------------------------------------------------------------
+CREATE or replace TABLE EMPLOYEE4 (
+    ID INT ,
+    NAME CHAR(100) ,
+    SALARY DOUBLE ,
+    DEPARTMENTID INT
+);
+INSERT INTO EMPLOYEE4 VALUES
+(1,'Joe',85000,1),
+(2,'Henry',80000,2),
+(3,'Sam',60000,2),
+(4,'Max',90000,1),
+(5,'Janet',69000,1),
+(6,'Randy',85000,1),
+(7,'Will',70000,1);
+
+
+WITH CTE AS (
+SELECT EMP.ID AS EMPLOYEE_ID ,
+EMP.NAME AS EMPLOYEE_NAME ,
+SALARY , D.NAME AS DEPARTMENT_NAME
+,dense_rank() OVER(PARTITION BY DEPARTMENTID ORDER BY SALARY DESC) AS SALARY_RANK
+FROM EMPLOYEE4 EMP
+JOIN DEPARTMENT D
+ON EMP.DEPARTMENTID = D.ID
+)
+SELECT EMPLOYEE_NAME
+,DEPARTMENT_NAME
+,SALARY
+FROM CTE
+WHERE 1=1
+AND SALARY_RANK <=3;
+
+-- ----------------------------------------------------------------------------------------------------------------
+-- Delete Duplicate Emails. Write an SQL query to delete all duplicate email entries in a table named Person, keeping only unique emails based in its smallest ID
+
+CREATE TABLE EMAIL (
+    ID INT,
+    EMAIL VARCHAR
+);
+INSERT INTO EMAIL VALUES
+(1,'john@example.com'),
+(2,'bob@example.com'),
+(3,'john@example.com');
+
+CREATE TEMPORARY TABLE EMAIL_TEMP AS (
+SELECT ID
+,EMAIL
+,dense_rank() OVER(PARTITION BY EMAIL ORDER BY ID ASC) AS EMAIL_RANK
+FROM EMAIL
+ORDER BY ID
+);
+DELETE
+FROM EMAIL_TEMP WHERE EMAIL_RANK <>1;
+
+
+-- ---------------------------------------------------------------------
+-- Rising Temperature - Write an SQL query to find all dates id with higher temperature compared to its previous dates.
+
+CREATE TABLE WEATHER
+(
+    ID INT ,
+    RECORDDATE DATE ,
+    TEMPERATURE INT
+);
+INSERT INTO WEATHER VALUES
+(1,'2015-01-01',10),
+(2,'2015-01-02',25),
+(3,'2015-01-03',20),
+(4,'2015-01-04',30);
+
+SELECT w2.id
+FROM WEATHER W1
+JOIN WEATHER W2
+ON DATEDIFF(DAY,W1.RECORDDATE,W2.RECORDDATE)=1
+where w1.temperature < w2.temperature;
+;
+-- -------------------------------------------------------------------------
+-- Trips and Users ,Write an SQL query ti find the cancellation rate of requests with unbanned users(both client and driver must not be banned) each day between "2013-10-01" and "2013-10-03"
+CREATE TABLE TRIPS (
+    ID INT
+    ,CLIENT_ID INT
+    ,DRIVER_ID INT
+    ,CITY_ID INT
+    ,STATUS VARCHAR(100)
+    ,REQUEST_AT DATE
+
+);
+CREATE TABLE USERS (
+    USERS_ID INT
+    ,BANNED VARCHAR(100)
+    ,ROLE VARCHAR(100)
+);
+
+INSERT INTO TRIPS VALUES
+(1,1,10,1,'COMPLETED','2013-10-01')
+,(2,2,11,1,'CANCELLED_BY_DRIVER','2013-10-01')
+,(3,3,12,6,'COMPLETED','2013-10-01')
+,(4,4,13,6,'CANCELLED_BY_CLIENT','2013-10-01')
+,(5,1,10,1,'COMPLETED','2013-10-02')
+,(6,2,11,6,'COMPLETED','2013-10-02')
+,(7,3,12,6,'COMPLETED','2013-10-02')
+,(8,2,12,12,'COMPLETED','2013-10-03')
+,(9,3,10,12,'COMPLETED','2013-10-03')
+,(10,4,13,12,'CANCELLED_BR_DRIVER','2013-10-03');
+
+INSERT INTO USERS VALUES
+(1,'NO','CLIENT')
+,(2,'YES','CLIENT')
+,(3,'NO','CLIENT')
+,(4,'NO','CLIENT')
+,(10,'NO','DRIVER')
+,(11,'NO','DRIVER')
+,(12,'NO','DRIVER')
+,(13,'NO','DRIVER');
+
+SELECT REQUEST_AT ,
+ROUND((COUNT (CASE WHEN STATUS <>'COMPLETED' THEN ID END))/COUNT(ID),2) AS TOTAL_ORDER
+FROM(
+SELECT * FROM TRIPS
+JOIN USERS
+ON TRIPS.CLIENT_ID = USERS.USERS_ID  AND USERS.BANNED = 'NO'
+    )
+WHERE REQUEST_AT BETWEEN '2013-10-01' AND '2013-10-03'
+GROUP BY REQUEST_AT;
+
+-- -------------------------------------------------------------
+-- Game Play Analysis , Write an SQL query that reports the first login date for each player.
+CREATE TABLE ACTIVITY
+(
+    player_id int ,
+    device_id int ,
+    event_date date ,
+    games_played int
+);
+
+INSERT INTO ACTIVITY VALUES
+(1,2,'2016-03-01',5),
+(1,2,'2016-05-02',6),
+(2,3,'2017-06-25',1),
+(3,1,'2016-03-02',0),
+(3,4,'2018-07-03',5);
+
+WITH CTE AS (
+SELECT PLAYER_ID , EVENT_DATE
+dense_rank() OVER (PARTITION BY PLAYER_ID ORDER BY EVENT_DATE ASC) AS RNK
+FROM ACTIVITY
+)
+SELECT PLAYER_ID , DEVICE_ID
+FROM CTE WHERE RNK=1
+;
+
+SELECT PLAYER_ID , MIN(EVENT_DATE) AS EVENT_DATE
+FROM ACTIVITY
+GROUP BY PLAYER_ID;
+
+-- WRITE AN SQL QUERY THAT REPORTS THE DEVICE THAT IS FIRST LOGGED IN FOR EACH PLAYER.
+
+
+WITH CTE AS (
+SELECT PLAYER_ID , EVENT_DATE,DEVICE_ID
+dense_rank() OVER (PARTITION BY PLAYER_ID ORDER BY EVENT_DATE ASC) AS RNK
+FROM ACTIVITY
+)
+SELECT PLAYER_ID , DEVICE_ID
+FROM CTE WHERE RNK=1
+;
+
+SELECT PLAYER_ID , DEVICE_ID
+FROM ACTIVITY WHERE
+(PLAYER_ID , EVENT_DATE) IN (
+    SELECT PLAYER_ID , MIN(EVENT_DATE) AS EVENT_DATE
+    FROM ACTIVITY
+    GROUP BY PLAYER_ID
+ );
+--  ---------------------------------------------------------------------
+
+-- WRITE AN SQL QUERY THAT REPORTS FOR EACH PLAYER AND DATE, HOW MANY GAMES PLAYED SO FAR BY THE PLAYER. THAT IS, THE TOTAL NUMBER OF GAMES PLAYED BY THE PLAYER UNTIL THE DATE.
+
+SELECT PLAYER_ID
+, EVENT_DATE
+,SUM(GAMES_PLAYED) OVER (PARTITION BY PLAYER_ID ORDER BY EVENT_DATE ASC) AS GAMES_PLAYED
+FROM ACTIVITY;
+
+-- ---------------------------------------------------------------------------------------
+-- Another Method ?
+-- -------------------------------------------------------------------------
+-- WRITE AN SQL QUERY THAT REPORTS THE FRACTION OF PLAYERS THAT LOGGED IN AGAIN ON THE DAY AFTER THEY FIRST LOGGED IN, ROUNDED TO 2 DECIMAL PLACES.IN OTHER WORDSM YOU NEED TO COUNT THE NUMBER OF PLAYERS THAT LOGGED IN FOR ATLEAST TWO CONSECUTIVES DAYS STARTING FROM THEIR FIRST LOGIN DATE, THEN DIVIDE THAT NUMBER BY THE TOTAL NUMBER OF PLAYERS.
+
+SELECT
+ROUND (REGULAR_PLAYER/(SELECT COUNT(DISTINCT PLAYER_ID) FROM ACTIVITY),2) AS FRACTION_PEOPLE
+FROM (
+SELECT COUNT(DISTINCT A1.PLAYER_ID) AS REGULAR_PLAYER
+FROM ACTIVITY A1
+JOIN ACTIVITY A2
+ON A1.PLAYER_ID = A2.PLAYER_ID AND DATEDIFF(DAY , A2.EVENT_DATE, A1.EVENT_DATE) = 1
+);
+
+-- ------------------------------------------------------------------------
+-- WRITE A SQL QUERY TO FIND THE MEDIAN SALARY OF EACH COMPANY.
+
+
+
+-- --------------------------------------------------------------
+-- -----------------------------------------------------------------------
+-- WRITW A SQL QUERY THAT FINDS OUT MANAGERS WITH AT LEAST 5 DIRECT REPORT.
+CREATE TABLE MANAGERDETAILS (
+    ID INT
+    ,NAME VARCHAR(10)
+    ,DEPARTMENT CHAR(5)
+    ,MANAGERID INT
+
+);
+INSERT INTO MANAGERDETAILS VALUES
+(101,'John','A',NULL),
+(102,'Dan','A',101),
+(103,'James','A',101),
+(104,'Amy','A',101),
+(105,'Anne','A',101),
+(106 , 'Ron','B',101);
+
+SELECT MANAGER_NAME
+FROM (
+SELECT T1.ID , T1.NAME
+,T1.DEPARTMENT , NVL(T2.NAME,'MANAGER') AS MANAGER_NAME
+FROM MANAGERDETAILS T1
+LEFT JOIN MANAGERDETAILS T2
+ON T1.MANAGERID = T2.ID
+ORDER BY T1.ID
+)
+GROUP BY MANAGER_NAME
+HAVING COUNT(MANAGER_NAME)>=5;
+
+
+SELECT NAME FROM
+MANAGERDETAILS
+WHERE ID IN (
+SELECT MANAGERID
+FROM MANAGERDETAILS
+GROUP BY MANAGERID
+HAVING COUNT(DISTINCT ID)>=5);
+
+-- ------------------------------------------------------------------------
+
+-- WRITE A SQL QUERY TO FIND THE WINNING CANDIDATE FROM THE CANDIDATE AND VOTERS TABLE , THE ID IS AUTOINCREMENT PRIMARY_KEY.
+
+CREATE TABLE CANDIDATE
+(
+    ID INT AUTOINCREMENT,
+    NAME CHAR(2)
+);
+
+CREATE TABLE VOTE(
+    ID INT AUTOINCREMENT ,
+    CANDIDATEID INT
+
+);
+
+INSERT INTO CANDIDATE VALUES
+(1,'A'),
+(2,'B'),
+(3,'C'),
+(4,'D'),
+(5,'E');
+
+INSERT INTO VOTE VALUES
+(1,2),
+(2,4),
+(3,3),
+(4,2),
+(5,5);
+
+SELECT NAME
+FROM CANDIDATE
+WHERE ID IN (
+   SELECT CANDIDATEID
+FROM VOTE
+GROUP BY CANDIDATEID
+ORDER BY COUNT(CANDIDATEID) DESC
+LIMIT 1
+);
+
+
+
+
